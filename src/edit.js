@@ -52,8 +52,26 @@ export default function Edit({ attributes, setAttributes }) {
 
 
 	return (
-		<p {...useBlockProps()}>
-			{'Test Block 10 – hello from the edit content!'}
-		</p>
+		<nav {...useBlockProps()}>
+			<ul class="wp_block_page_list">
+				<li class="page_item">{'Page 1'}</li>
+				<li class="page_item">{'Page 2'}</li>
+				<li class="page_item">{'Page 3'}
+					<ul class="children">
+						<li class="page_item">{'Page 2.1'}</li>
+						<li class="page_item">{'Page 2.2'}</li>
+						<li class="page_item">{'Page 2.3'}</li>
+					</ul>
+				</li>
+				<li class="page_item">{'Page 4'}</li>
+				<li class="page_item">{'Page 5'}
+					<ul class="children">
+						<li class="page_item">{'Page 2.1'}</li>
+						<li class="page_item">{'Page 2.2'}</li>
+						<li class="page_item">{'Page 2.3'}</li>
+					</ul>
+				</li>
+			</ul>
+		</nav>
 	);
 }

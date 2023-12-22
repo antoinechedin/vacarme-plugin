@@ -18,10 +18,7 @@ if( empty($post->post_parent) ) {
 }
 ?>
 
-<p <?php echo wp_kses_data( get_block_wrapper_attributes() ); ?>>
-<?php esc_html_e( 'Block with Dynamic Rendering 5 – hello!!!', 'block-development-examples' ); ?>
-<br/>
-<!-- <nav class="wp-block-navigation"> -->
+<nav <?php echo wp_kses_data( get_block_wrapper_attributes() ); ?>>
 <ul class="wp_block_page_list">
 <?php wp_list_pages(array(
     'title_li' => '',
@@ -30,5 +27,4 @@ if( empty($post->post_parent) ) {
     'sort_column' => 'menu_order,post_title',
 ));?>
 </ul>
-<!-- </nav> -->
-</p>
+</nav>

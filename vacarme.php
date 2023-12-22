@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       Vacarme
- * Description:       Vacarme plugin and custom
+ * Description:       Vacarme plugin and custom blocks
  * Requires at least: 6.1
  * Requires PHP:      7.0
  * Version:           0.1.0
