@@ -1,0 +1,17 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "vacarme/geojson",
+	"version": "0.1.0",
+	"title": "Geo JSON",
+	"category": "widgets",
+	"icon": "dashicons-media-code",
+	"description": "This JSON object is used by Leaflet to display this item on the map",
+	"example": {},
+	"supports": {
+		"multiple": false,
+		"reusable": false
+	},
+	"textdomain": "vacarme",
+	"editorScript": "file:./index.js"
+}
