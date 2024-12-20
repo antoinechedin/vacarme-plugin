@@ -23,7 +23,7 @@ if( empty($post->post_parent) ) {
 <?php wp_list_pages(array(
     'title_li' => '',
     'child_of' => $parent,
-    'depth' => 2,
+    'depth' => 0,
     'sort_column' => 'menu_order,post_title',
 ));?>
 </ul>
