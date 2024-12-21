@@ -30,11 +30,12 @@ registerBlockType(block.name, {
 		}
 
 		const updateGeojsonString = (newValue) => {
-			try {
+			// #TODO: Tried to format the json string. Wasn't working very well
+			/* try {
 				newValue = JSON.stringify(JSON.parse(newValue));
 			} catch (e) {
 				console.error(e); // #TODO: better error handling
-			}
+			} */
 			setMeta({ ...meta, geojson: newValue }); // 
 		};
 
@@ -42,7 +43,6 @@ registerBlockType(block.name, {
 			<TextareaControl {...blockProps}
 				label='Geo JSON'
 				// className='wp-block-code'
-
 				value={geojsonString}
 				onChange={updateGeojsonString}
 				rows={20}

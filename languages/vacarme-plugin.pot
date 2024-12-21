@@ -1,0 +1,53 @@
+# Copyright (C) 2024 Antoine Chedin
+# This file is distributed under the MIT.
+msgid ""
+msgstr ""
+"Project-Id-Version: Vacarme 0.1.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/vacarme-plugin\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2024-12-21T21:01:27+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.11.0\n"
+"X-Domain: vacarme-plugin\n"
+
+#. Plugin Name of the plugin
+#: vacarme.php
+msgid "Vacarme"
+msgstr ""
+
+#. Description of the plugin
+#: vacarme.php
+msgid "Vacarme plugin and custom blocks"
+msgstr ""
+
+#. Author of the plugin
+#: vacarme.php
+msgid "Antoine Chedin"
+msgstr ""
+
+#: vacarme.php:43
+msgid "Quests"
+msgstr ""
+
+#: vacarme.php:44
+msgid "Quest"
+msgstr ""
+
+#: vacarme.php:90
+#: vacarme.php:91
+msgid "World map"
+msgstr ""
+
+#: vacarme.php:100
+#: vacarme.php:101
+#: vacarme.php:115
+msgid "Locations"
+msgstr ""
+
+#: vacarme.php:116
+msgid "Location"
+msgstr ""
