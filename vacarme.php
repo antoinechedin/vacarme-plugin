@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name:       Vacarme
  * Description:       Vacarme plugin and custom blocks
@@ -20,7 +21,8 @@ if (!defined('ABSPATH')) {
 
 const VACARME_QUEST = 'vacarme_quest';
 
-function VacarmeLoadTextdomain($mofile, $domain)
+// #TODO: Delve into localisation
+/* function VacarmeLoadTextdomain($mofile, $domain)
 {
 	if ('my-domain' === $domain && false !== strpos($mofile, WP_LANG_DIR . '/plugins/')) {
 		$locale = apply_filters('plugin_locale', determine_locale(), $domain);
@@ -28,7 +30,7 @@ function VacarmeLoadTextdomain($mofile, $domain)
 	}
 	return $mofile;
 }
-add_filter('load_textdomain_mofile', 'VacarmeLoadTextdomain', 10, 2);
+add_filter('load_textdomain_mofile', 'VacarmeLoadTextdomain', 10, 2); */
 
 /**
  * Registers the block using the metadata loaded from the `block.json` file.
@@ -85,14 +87,8 @@ function VacarmeAddCustomBox()
 }
 //add_action( 'add_meta_boxes', 'VacarmeAddCustomBox' );
 
-function worldmap()
-{
-	?>
-	<div class="wrap">
-		<h1>Test function</h1>
-	</div>
-	<?php
-}
+
+add_action('admin_menu', 'VacarmeWorldMapMenu');
 function VacarmeWorldMapMenu(): void
 {
 	$world_map_menu_slug = 'vacarme_world_map_menu';
@@ -101,7 +97,7 @@ function VacarmeWorldMapMenu(): void
 		__('World map', 'vacarme-plugin'),
 		'edit_posts',
 		$world_map_menu_slug,
-		'worldmap',
+		'VacarmeWorldMapMenuRender',
 		'dashicons-admin-site',
 		40
 	);
@@ -111,10 +107,13 @@ function VacarmeWorldMapMenu(): void
 		__('Locations', 'vacarme-plugin'),
 		'edit_posts',
 		'vacarme_world_map_menu_location',
-		'worldmap'
+		'VacarmeWorldMapMenuRender'
 	);
 }
-add_action('admin_menu', 'VacarmeWorldMapMenu');
+function VacarmeWorldMapMenuRender(): void
+{
+	require_once plugin_dir_path(__FILE__) . 'src/renderers/admin-worldmap.php';
+}
 
 function VacarmeMapLocationPostType(): void
 {
@@ -125,8 +124,20 @@ function VacarmeMapLocationPostType(): void
 				'name' => __('Locations', 'vacarme-plugin'),
 				'singular_name' => __('Location', 'vacarme-plugin')
 			),
-			'public' => false
+			'public' => true
 		)
 	);
 }
 add_action('init', 'VacarmeMapLocationPostType');
+
+
+/**
+ * Fires when enqueuing scripts for all admin pages.
+ *
+ * @param string $hook_suffix The current admin page.
+ */
+add_action('admin_enqueue_scripts',  function ($hook_suffix): void {
+	wp_enqueue_style('vacarme-admin', plugin_dir_url(__FILE__) . 'style.css', array(), null);
+	wp_enqueue_style('leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', array(), null);
+	wp_enqueue_script('leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', array(), null);
+});
