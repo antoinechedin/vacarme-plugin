@@ -13,11 +13,12 @@ $geoJson_array = array_map(function ($post) {
     return json_encode($json);
 }, $location_posts);
 ?>
+
 <div class="wrap">
     <div class="worldmap-editor widefat">
         <div class="editor-sidebar">
             <table class="widefat wp-list-table fixed striped table-view-list posts">
-                <tbody id="map-hyperlink-list">
+                <tbody id="map-hyperlink-list" class="the-list">
 
                 </tbody>
             </table>
@@ -33,7 +34,7 @@ $geoJson_array = array_map(function ($post) {
 
             let mapHyperlinks = [];
 
-            function select(id) {
+            function edit(id) {
                 mapHyperlinks.forEach((mapHyperlink) => {
                     if (mapHyperlink.geojson.id == id) {
                         mapHyperlink.selected = !mapHyperlink.selected;
@@ -46,16 +47,73 @@ $geoJson_array = array_map(function ($post) {
                 });
             }
 
+            function cancel(id) {
+                mapHyperlinks.forEach((mapHyperlink) => {
+                    if (mapHyperlink.geojson.id != id) {
+                        return;
+                    }
+
+                    mapHyperlink.selected = false;
+                    mapHyperlink.onSelected();
+                });
+            }
+
             class MapHyperlink {
                 constructor(geojson) {
                     this.geojson = geojson;
                     this.selected = false;
-                    // Dom Element
-                    this.element = document.createElement('tr');
-                    this.element.id = `${this.geojson.id}`;
-                    this.element.onclick = () => select(this.geojson.id);
-                    this.element.innerHTML = `
+                    // Row
+                    this.tableRow = document.createElement('tr');
+                    this.tableRow.id = `post-${this.geojson.id}`;
+                    this.tableRow.onclick = () => edit(this.geojson.id);
+                    this.tableRow.innerHTML = `
                         <td><strong>${this.geojson.properties.title}</strong></td>
+                    `;
+                    // Edit row
+                    this.editTableRow = document.createElement('tr');
+                    this.editTableRow.id = `edit-${this.geojson.id}`;
+                    this.editTableRow.classList.add('inline-edit-row' /*, 'inline-edit-row-page', 'quick-edit-row', 'quick-edit-row-page', 'inline-editor'*/ );
+                    this.editTableRow.innerHTML = `
+                        <td>
+                            <div class="inline-edit-row inline-edit-wrapper" role="region">
+                                <fieldset>
+                                    <legend class="inline-edit-legend"><?php _e('Edit') ?></legend>
+                                    <div class="inline-edit-col">
+                                        <label>
+							                <span class="title"><?php _e('Title') ?></span>
+                                            <span class="input-text-wrap"><input type="text" name="post_title" class="ptitle" value=""></span>
+                                        </label>
+                                        <label>
+                                            <span class="title"><?php _e('Page') ?></span>
+                                            <select name="post_page_id">
+                                            <?php
+                                            foreach (get_pages(array('hierarchical' => true)) as $post) {
+                                                $depth = count(get_post_ancestors($post));
+                                                echo '<option value="' . $post->ID . '">' . str_repeat('&nbsp;&nbsp;&nbsp;', $depth) . $post->post_title . '</option>';
+                                            }
+                                            ?>
+                                            </select>
+                                        </label>
+                                        <label>
+							                <span class="title"><?php _e('Min zoom', 'vacarme-plugin') ?></span>
+                                            <span class="input-text-wrap"><input type="text" name="post_min_zoom" value=""></span>
+                                        </label>
+                                        <label>
+							                <span class="title"><?php _e('Max Zoom', 'vacarme-plugin') ?></span>
+                                            <span class="input-text-wrap"><input type="text" name="post_max_zoom" value=""></span>
+                                        </label>
+                                    </div>
+                                </fieldset>
+                                <div class="submit inline-edit-save">
+									<input type="hidden" id="_inline_edit" name="_inline_edit" value="1f663d9e2d">
+                                    <button type="button" class="button button-primary save"><?php _e('Update') ?></button>
+                                    <button type="button" class="button cancel" onclick="cancel(${this.geojson.id})"><?php _e('Cancel') ?></button>
+                                    <span class="spinner"></span>
+                                    <input type="hidden" name="post_view" value="list">
+                                    <input type="hidden" name="screen" value="edit-page">
+                                    <div class="notice notice-error notice-alt inline hidden"><p class="error"></p></div>			</div>
+                            </div>
+                        </td>
                     `;
                     // Bounds
                     let latLngs = L.GeoJSON.coordsToLatLngs(this.geojson.geometry.coordinates[0]);
@@ -107,9 +165,16 @@ $geoJson_array = array_map(function ($post) {
 
                 onSelected() {
                     if (this.selected) {
+                        this.tableRow.parentNode.insertBefore(this.editTableRow, this.tableRow.nextSibling);
+                        this.tableRow.style.display = 'none';
+                        // this.editTableRow.getElementsByName('post_title')[0].value = this.geojson.properties.title;
+
                         this.mapLayer.setStyle(selectedStyle);
                         this.resizeMarkerLayer.addTo(map);
                     } else {
+                        this.editTableRow.remove();
+                        this.tableRow.style = '';
+
                         this.mapLayer.setStyle(defaultStyle);
                         this.resizeMarkerLayer.removeFrom(map);
                     }
@@ -138,16 +203,14 @@ $geoJson_array = array_map(function ($post) {
                 oldHyperlinks.forEach((geojson) => {
                     let listItem = new MapHyperlink(geojson)
                     mapHyperlinks.push(listItem);
-                    listContainer.appendChild(listItem.element);
+                    listContainer.appendChild(listItem.tableRow);
                     listItem.mapLayer.addTo(map);
                 });
-
             }
 
             let map = null;
 
             window.onload = (event) => {
-                console.log(event)
                 const ZoomViewer = L.Control.extend({
                     onAdd() {
                         const container = L.DomUtil.create('div');
