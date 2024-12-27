@@ -24,23 +24,109 @@ $geoJson_array = array_map(function ($post) {
         </div>
         <div id="worldmap" class="worldmap"></div>
         <script>
+            const defaultStyle = {
+                color: '#808080'
+            };
+            const selectedStyle = {
+                color: '#ff0000'
+            };
+
+            let mapHyperlinks = [];
+
+            function select(id) {
+                mapHyperlinks.forEach((mapHyperlink) => {
+                    if (mapHyperlink.geojson.id == id) {
+                        mapHyperlink.selected = !mapHyperlink.selected;
+                        mapHyperlink.onSelected();
+                        mapHyperlink.focus();
+                    } else {
+                        mapHyperlink.selected = false;
+                        mapHyperlink.onSelected();
+                    }
+                });
+            }
+
             class MapHyperlink {
                 constructor(geojson) {
                     this.geojson = geojson;
-                }
-
-                getElement() {
-                    if (this.element !== undefined) {
-                        return this.element;
-                    }
-
+                    this.selected = false;
+                    // Dom Element
                     this.element = document.createElement('tr');
-                    this.element.id = `post-${this.geojson.id}`;
+                    this.element.id = `${this.geojson.id}`;
+                    this.element.onclick = () => select(this.geojson.id);
                     this.element.innerHTML = `
                         <td><strong>${this.geojson.properties.title}</strong></td>
                     `;
-                    return this.element;
+                    // Bounds
+                    let latLngs = L.GeoJSON.coordsToLatLngs(this.geojson.geometry.coordinates[0]);
+                    this.northEast = latLngs[0];
+                    this.southWest = latLngs[2];
+                    this.center = L.latLngBounds(this.northEast, this.southWest).getCenter();
+                    // Rect layer
+                    this.mapLayer = L.rectangle(L.latLngBounds(this.northEast, this.southWest), defaultStyle);
+                    // Marker layers
+                    this.markers = [];
+                    this.markers.push(
+                        L.marker(latLngs[0], {
+                            draggable: true
+                        }).on('drag', (e) => {
+                            this.northEast = e.latlng;
+                            this.updateCoordinates();
+                        })
+                    );
+                    this.markers.push(
+                        L.marker(latLngs[1], {
+                            draggable: true
+                        }).on('drag', (e) => {
+                            this.northEast.lat = e.latlng.lat;
+                            this.southWest.lng = e.latlng.lng;
+                            this.updateCoordinates();
+                        })
+                    );
+                    this.markers.push(
+                        L.marker(latLngs[2], {
+                            draggable: true
+                        }).on('drag', (e) => {
+                            this.southWest = e.latlng;
+                            this.updateCoordinates();
+                        })
+                    );
+                    this.markers.push(
+                        L.marker(latLngs[3], {
+                            draggable: true
+                        }).on('drag', (e) => {
+                            this.northEast.lng = e.latlng.lng;
+                            this.southWest.lat = e.latlng.lat;
+                            this.updateCoordinates();
+                        })
+                    );
+
+                    this.resizeMarkerLayer = L.featureGroup(this.markers);
+
                 }
+
+                onSelected() {
+                    if (this.selected) {
+                        this.mapLayer.setStyle(selectedStyle);
+                        this.resizeMarkerLayer.addTo(map);
+                    } else {
+                        this.mapLayer.setStyle(defaultStyle);
+                        this.resizeMarkerLayer.removeFrom(map);
+                    }
+                }
+
+                focus() {
+                    map.setView(this.mapLayer.getBounds().getCenter(), this.geojson.properties.zoom);
+                }
+
+                updateCoordinates() {
+                    this.mapLayer.setBounds(L.latLngBounds(this.northEast, this.southWest));
+                    this.markers[0].setLatLng(this.northEast);
+                    this.markers[1].setLatLng(L.latLng(this.northEast.lat, this.southWest.lng));
+                    this.markers[2].setLatLng(this.southWest);
+                    this.markers[3].setLatLng(L.latLng(this.southWest.lat, this.northEast.lng));
+                }
+
             }
 
             const oldHyperlinks = [
@@ -51,12 +137,17 @@ $geoJson_array = array_map(function ($post) {
                 let listContainer = document.getElementById('map-hyperlink-list');
                 oldHyperlinks.forEach((geojson) => {
                     let listItem = new MapHyperlink(geojson)
-                    listContainer.appendChild(listItem.getElement());
+                    mapHyperlinks.push(listItem);
+                    listContainer.appendChild(listItem.element);
+                    listItem.mapLayer.addTo(map);
                 });
+
             }
 
+            let map = null;
+
             window.onload = (event) => {
-                buildList();
+                console.log(event)
                 const ZoomViewer = L.Control.extend({
                     onAdd() {
                         const container = L.DomUtil.create('div');
@@ -64,11 +155,7 @@ $geoJson_array = array_map(function ($post) {
                         container.style.background = 'rgba(255,255,255,0.7)';
                         container.style.textAlign = 'left';
                         map.on('zoomstart zoom zoomend', (ev) => {
-                            container.innerHTML = `
-                                Zoom level: $ {
-                                    map.getZoom()
-                                }
-                                `;
+                            container.innerHTML = `Zoom level: ${map.getZoom()}`;
                         });
                         return container;
                     }
@@ -81,18 +168,13 @@ $geoJson_array = array_map(function ($post) {
                         container.style.background = 'rgba(255,255,255,0.7)';
                         container.style.textAlign = 'left';
                         map.on('mousemove', (ev) => {
-                            container.innerHTML = `
-                                Coordinates: [$ {
-                                    ev.latlng.lng.toFixed(2)
-                                }, $ {
-                                    ev.latlng.lat.toFixed(2)
-                                }] `;
+                            container.innerHTML = `Coordinates: [${ev.latlng.lng.toFixed(2)}, ${ev.latlng.lat.toFixed(2)}]`;
                         });
                         return container
                     }
                 });
 
-                let map = L.map('worldmap', {
+                map = L.map('worldmap', {
                     crs: L.CRS.Simple,
                     zoomDelta: 0.25,
                     zoomSnap: 0,
@@ -105,6 +187,8 @@ $geoJson_array = array_map(function ($post) {
 
                 const zoomViewerControl = (new ZoomViewer()).addTo(map);
                 const coordinatesViewerControl = (new CoordinatesViewer()).addTo(map);
+
+                buildList();
 
 
                 function hyperlinksStyle(feature) {
@@ -126,11 +210,12 @@ $geoJson_array = array_map(function ($post) {
                     }
                 }
 
-                let hyperlinksLayer = L.geoJSON(oldHyperlinks, {
-                    style: hyperlinksStyle,
-                    onEachFeature: hyperlinksOnEachFeature
-                }).addTo(map);
-                map.on('zoomend', (e) => hyperlinksLayer.resetStyle());
+
+                // let hyperlinksLayer = L.geoJSON(oldHyperlinks, {
+                //     style: hyperlinksStyle,
+                //     onEachFeature: hyperlinksOnEachFeature
+                // }).addTo(map);
+                // map.on('zoomend', (e) => hyperlinksLayer.resetStyle());
             }
 
             function focus() {
