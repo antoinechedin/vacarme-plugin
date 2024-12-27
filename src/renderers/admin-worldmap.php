@@ -81,11 +81,11 @@ $geoJson_array = array_map(function ($post) {
                                     <div class="inline-edit-col">
                                         <label>
 							                <span class="title"><?php _e('Title') ?></span>
-                                            <span class="input-text-wrap"><input type="text" name="post_title" class="ptitle" value=""></span>
+                                            <span class="input-text-wrap"><input id="edit-${this.geojson.id}-post_title" type="text" name="post_title" class="ptitle" value=""></span>
                                         </label>
                                         <label>
                                             <span class="title"><?php _e('Page') ?></span>
-                                            <select name="post_page_id">
+                                            <select id="edit-${this.geojson.id}-post_page_id" name="post_page_id">
                                             <?php
                                             foreach (get_pages(array('hierarchical' => true)) as $post) {
                                                 $depth = count(get_post_ancestors($post));
@@ -96,11 +96,11 @@ $geoJson_array = array_map(function ($post) {
                                         </label>
                                         <label>
 							                <span class="title"><?php _e('Min zoom', 'vacarme-plugin') ?></span>
-                                            <span class="input-text-wrap"><input type="text" name="post_min_zoom" value=""></span>
+                                            <span class="input-text-wrap"><input type="text" id="edit-${this.geojson.id}-post_min_zoom" name="post_min_zoom" value=""></span>
                                         </label>
                                         <label>
 							                <span class="title"><?php _e('Max Zoom', 'vacarme-plugin') ?></span>
-                                            <span class="input-text-wrap"><input type="text" name="post_max_zoom" value=""></span>
+                                            <span class="input-text-wrap"><input type="text" id="edit-${this.geojson.id}-post_max_zoom" name="post_max_zoom" value=""></span>
                                         </label>
                                     </div>
                                 </fieldset>
@@ -167,7 +167,7 @@ $geoJson_array = array_map(function ($post) {
                     if (this.selected) {
                         this.tableRow.parentNode.insertBefore(this.editTableRow, this.tableRow.nextSibling);
                         this.tableRow.style.display = 'none';
-                        // this.editTableRow.getElementsByName('post_title')[0].value = this.geojson.properties.title;
+                        this.resetEditForm();
 
                         this.mapLayer.setStyle(selectedStyle);
                         this.resizeMarkerLayer.addTo(map);
@@ -190,6 +190,13 @@ $geoJson_array = array_map(function ($post) {
                     this.markers[1].setLatLng(L.latLng(this.northEast.lat, this.southWest.lng));
                     this.markers[2].setLatLng(this.southWest);
                     this.markers[3].setLatLng(L.latLng(this.southWest.lat, this.northEast.lng));
+                }
+
+                resetEditForm() {
+                    document.getElementById(`edit-${this.geojson.id}-post_title`).value = this.geojson.properties.title;
+                    document.getElementById(`edit-${this.geojson.id}-post_page_id`).value = this.geojson.properties.postId;
+                    document.getElementById(`edit-${this.geojson.id}-post_min_zoom`).value = this.geojson.properties.minZoom;
+                    document.getElementById(`edit-${this.geojson.id}-post_max_zoom`).value = this.geojson.properties.maxZoom;
                 }
 
             }
