@@ -60,6 +60,7 @@ $geoJson_array = array_map(function ($post) {
                 newGeojson.geometry.coordinates = mapHyperlink.getGeometryCoordinates();
                 new wp.api.models.MapHyperlink({
                     id: id,
+                    slug: id.toString(),
                     title: newGeojson.properties.title,
                     content: JSON.stringify(newGeojson)
                 }).save().done((response) => {

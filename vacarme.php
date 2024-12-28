@@ -125,7 +125,7 @@ function VacarmeMapLocationPostType(): void
 				'singular_name' => __('Location', 'vacarme-plugin')
 			),
 			'public' => true,
-			'show_in_rest' => true
+			'show_in_rest' => true,
 		)
 	);
 }
