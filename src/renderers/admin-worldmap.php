@@ -1,7 +1,7 @@
 <?php
 $location_posts = get_posts(array(
     'numberposts' => -1,
-    'post_type' => 'vacarme_map_location',
+    'post_type' => 'map-hyperlink',
 ));
 $geoJson_array = array_map(function ($post) {
     $json = json_decode($post->post_content, true);
@@ -47,6 +47,29 @@ $geoJson_array = array_map(function ($post) {
                 });
             }
 
+            function update(id) {
+                let spinner = document.getElementById(`edit-${id}-spinner`);
+                spinner.classList.add('is-active');
+                let mapHyperlink = mapHyperlinks.find(e => e.geojson.id == id);
+                let newGeojson = mapHyperlink.geojson;
+                newGeojson.id = id;
+                newGeojson.properties.title = document.getElementById(`edit-${id}-post_title`).value;
+                newGeojson.properties.linkedPostId = document.getElementById(`edit-${id}-linked_post_id`).value;
+                newGeojson.properties.minZoom = document.getElementById(`edit-${id}-post_min_zoom`).value;
+                newGeojson.properties.maxZoom = document.getElementById(`edit-${id}-post_max_zoom`).value;
+                newGeojson.geometry.coordinates = mapHyperlink.getGeometryCoordinates();
+                new wp.api.models.MapHyperlink({
+                    id: id,
+                    title: newGeojson.properties.title,
+                    content: JSON.stringify(newGeojson)
+                }).save().done((response) => {
+                    spinner.classList.remove('is-active');
+                    console.log(response);
+                    mapHyperlink.setGeojson(JSON.parse(response.content.raw));
+                })
+
+            }
+
             function cancel(id) {
                 mapHyperlinks.forEach((mapHyperlink) => {
                     if (mapHyperlink.geojson.id != id) {
@@ -60,17 +83,25 @@ $geoJson_array = array_map(function ($post) {
 
             class MapHyperlink {
                 constructor(geojson) {
-                    this.geojson = geojson;
                     this.selected = false;
+                    this.setGeojson(geojson);
+                }
+
+                setGeojson(geojson) {
+                    this.geojson = geojson;
                     // Row
-                    this.tableRow = document.createElement('tr');
+                    if (this.tableRow === undefined) {
+                        this.tableRow = document.createElement('tr');
+                    }
                     this.tableRow.id = `post-${this.geojson.id}`;
                     this.tableRow.onclick = () => edit(this.geojson.id);
                     this.tableRow.innerHTML = `
                         <td><strong>${this.geojson.properties.title}</strong></td>
                     `;
                     // Edit row
-                    this.editTableRow = document.createElement('tr');
+                    if (this.editTableRow === undefined) {
+                        this.editTableRow = document.createElement('tr');
+                    }
                     this.editTableRow.id = `edit-${this.geojson.id}`;
                     this.editTableRow.classList.add('inline-edit-row' /*, 'inline-edit-row-page', 'quick-edit-row', 'quick-edit-row-page', 'inline-editor'*/ );
                     this.editTableRow.innerHTML = `
@@ -85,7 +116,7 @@ $geoJson_array = array_map(function ($post) {
                                         </label>
                                         <label>
                                             <span class="title"><?php _e('Page') ?></span>
-                                            <select id="edit-${this.geojson.id}-post_page_id" name="post_page_id">
+                                            <select id="edit-${this.geojson.id}-linked_post_id" name="linked_post_id">
                                             <?php
                                             foreach (get_pages(array('hierarchical' => true)) as $post) {
                                                 $depth = count(get_post_ancestors($post));
@@ -106,9 +137,9 @@ $geoJson_array = array_map(function ($post) {
                                 </fieldset>
                                 <div class="submit inline-edit-save">
 									<input type="hidden" id="_inline_edit" name="_inline_edit" value="1f663d9e2d">
-                                    <button type="button" class="button button-primary save"><?php _e('Update') ?></button>
+                                    <button type="button" class="button button-primary save" onclick="update(${this.geojson.id})"><?php _e('Update') ?></button>
                                     <button type="button" class="button cancel" onclick="cancel(${this.geojson.id})"><?php _e('Cancel') ?></button>
-                                    <span class="spinner"></span>
+                                    <span id="edit-${this.geojson.id}-spinner" class="spinner"></span>
                                     <input type="hidden" name="post_view" value="list">
                                     <input type="hidden" name="screen" value="edit-page">
                                     <div class="notice notice-error notice-alt inline hidden"><p class="error"></p></div>			</div>
@@ -121,46 +152,51 @@ $geoJson_array = array_map(function ($post) {
                     this.southWest = latLngs[2];
                     this.center = L.latLngBounds(this.northEast, this.southWest).getCenter();
                     // Rect layer
-                    this.mapLayer = L.rectangle(L.latLngBounds(this.northEast, this.southWest), defaultStyle);
+                    if (this.mapLayer === undefined) {
+                        this.mapLayer = L.rectangle(L.latLngBounds(this.northEast, this.southWest), defaultStyle);
+                    } else {
+                        this.mapLayer.setBounds(L.latLngBounds(this.northEast, this.southWest));
+                        this.mapLayer.setStyle(defaultStyle);
+                    }
                     // Marker layers
-                    this.markers = [];
-                    this.markers.push(
-                        L.marker(latLngs[0], {
-                            draggable: true
-                        }).on('drag', (e) => {
-                            this.northEast = e.latlng;
-                            this.updateCoordinates();
-                        })
-                    );
-                    this.markers.push(
-                        L.marker(latLngs[1], {
-                            draggable: true
-                        }).on('drag', (e) => {
-                            this.northEast.lat = e.latlng.lat;
-                            this.southWest.lng = e.latlng.lng;
-                            this.updateCoordinates();
-                        })
-                    );
-                    this.markers.push(
-                        L.marker(latLngs[2], {
-                            draggable: true
-                        }).on('drag', (e) => {
-                            this.southWest = e.latlng;
-                            this.updateCoordinates();
-                        })
-                    );
-                    this.markers.push(
-                        L.marker(latLngs[3], {
-                            draggable: true
-                        }).on('drag', (e) => {
-                            this.northEast.lng = e.latlng.lng;
-                            this.southWest.lat = e.latlng.lat;
-                            this.updateCoordinates();
-                        })
-                    );
-
-                    this.resizeMarkerLayer = L.featureGroup(this.markers);
-
+                    if (this.markers === undefined) {
+                        this.markers = [];
+                        this.markers.push(
+                            L.marker(latLngs[0], {
+                                draggable: true
+                            }).on('drag', (e) => {
+                                this.northEast = e.latlng;
+                                this.updateCoordinates();
+                            })
+                        );
+                        this.markers.push(
+                            L.marker(latLngs[1], {
+                                draggable: true
+                            }).on('drag', (e) => {
+                                this.northEast.lat = e.latlng.lat;
+                                this.southWest.lng = e.latlng.lng;
+                                this.updateCoordinates();
+                            })
+                        );
+                        this.markers.push(
+                            L.marker(latLngs[2], {
+                                draggable: true
+                            }).on('drag', (e) => {
+                                this.southWest = e.latlng;
+                                this.updateCoordinates();
+                            })
+                        );
+                        this.markers.push(
+                            L.marker(latLngs[3], {
+                                draggable: true
+                            }).on('drag', (e) => {
+                                this.northEast.lng = e.latlng.lng;
+                                this.southWest.lat = e.latlng.lat;
+                                this.updateCoordinates();
+                            })
+                        );
+                        this.resizeMarkerLayer = L.featureGroup(this.markers);
+                    }
                 }
 
                 onSelected() {
@@ -194,9 +230,21 @@ $geoJson_array = array_map(function ($post) {
 
                 resetEditForm() {
                     document.getElementById(`edit-${this.geojson.id}-post_title`).value = this.geojson.properties.title;
-                    document.getElementById(`edit-${this.geojson.id}-post_page_id`).value = this.geojson.properties.postId;
+                    document.getElementById(`edit-${this.geojson.id}-linked_post_id`).value = this.geojson.properties.linkedPostId;
                     document.getElementById(`edit-${this.geojson.id}-post_min_zoom`).value = this.geojson.properties.minZoom;
                     document.getElementById(`edit-${this.geojson.id}-post_max_zoom`).value = this.geojson.properties.maxZoom;
+                }
+
+                getGeometryCoordinates() {
+                    return [
+                        [
+                            [this.northEast.lng.toFixed(2), this.northEast.lat.toFixed(2)],
+                            [this.southWest.lng.toFixed(2), this.northEast.lat.toFixed(2)],
+                            [this.southWest.lng.toFixed(2), this.southWest.lat.toFixed(2)],
+                            [this.northEast.lng.toFixed(2), this.southWest.lat.toFixed(2)],
+                            [this.northEast.lng.toFixed(2), this.northEast.lat.toFixed(2)]
+                        ]
+                    ]
                 }
 
             }

@@ -118,13 +118,14 @@ function VacarmeWorldMapMenuRender(): void
 function VacarmeMapLocationPostType(): void
 {
 	register_post_type(
-		'vacarme_map_location',
+		'map-hyperlink',
 		array(
 			'labels' => array(
 				'name' => __('Locations', 'vacarme-plugin'),
 				'singular_name' => __('Location', 'vacarme-plugin')
 			),
-			'public' => true
+			'public' => true,
+			'show_in_rest' => true
 		)
 	);
 }
@@ -138,6 +139,7 @@ add_action('init', 'VacarmeMapLocationPostType');
  */
 add_action('admin_enqueue_scripts',  function ($hook_suffix): void {
 	wp_enqueue_style('vacarme-admin', plugin_dir_url(__FILE__) . 'style.css', array(), null);
+	wp_enqueue_script('wp-api'); // #TODO: replace by wp_enqueue_script( 'my_script', 'path/to/my/script', array( 'wp-api' ) );
 	wp_enqueue_style('leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', array(), null);
 	wp_enqueue_script('leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', array(), null);
 });
