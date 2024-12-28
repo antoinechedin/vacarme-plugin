@@ -1,22 +1,31 @@
 <?php
-$location_posts = get_posts(array(
+$map_hyperlinks = get_posts(array(
     'numberposts' => -1,
     'post_type' => 'map-hyperlink',
 ));
-$geoJson_array = array_map(function ($post) {
-    $json = json_decode($post->post_content, true);
+$json_map_hyperlinks = array_map(function ($post) {
+    $geojson = json_decode($post->post_content, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
         return null;
     }
-    $json['id'] = $post->ID;
-    $json['properties']['title'] = $post->post_title;
-    return json_encode($json);
-}, $location_posts);
+    return json_encode(array(
+        'id' => $post->ID,
+        'title' => $post->post_title,
+        'geojson' => $geojson
+    ));
+}, $map_hyperlinks);
 ?>
 
 <div class="wrap">
     <div class="worldmap-editor widefat">
         <div class="editor-sidebar">
+            <h1 class="wp-heading-inline"><?php _e('Hyperlinks', 'vacarme-plugin') ?></h1>
+
+            <a class="page-title-action" onclick="create()"><?php _e('Add New Hyperlink', 'vacarme-plugin') ?></a>
+            <hr class="wp-header-end">
+            <div class="tablenav top">
+                <!-- <button type="button" class="button"><?php _e('Add New Hyperlink', 'vacarme-plugin') ?></button> -->
+            </div>
             <table class="widefat wp-list-table fixed striped table-view-list posts">
                 <tbody id="map-hyperlink-list" class="the-list">
 
@@ -36,7 +45,7 @@ $geoJson_array = array_map(function ($post) {
 
             function edit(id) {
                 mapHyperlinks.forEach((mapHyperlink) => {
-                    if (mapHyperlink.geojson.id == id) {
+                    if (mapHyperlink.id == id) {
                         mapHyperlink.selected = !mapHyperlink.selected;
                         mapHyperlink.onSelected();
                         mapHyperlink.focus();
@@ -47,33 +56,38 @@ $geoJson_array = array_map(function ($post) {
                 });
             }
 
-            function update(id) {
+            function save(id) {
                 let spinner = document.getElementById(`edit-${id}-spinner`);
                 spinner.classList.add('is-active');
-                let mapHyperlink = mapHyperlinks.find(e => e.geojson.id == id);
-                let newGeojson = mapHyperlink.geojson;
-                newGeojson.id = id;
-                newGeojson.properties.title = document.getElementById(`edit-${id}-post_title`).value;
+
+                let mapHyperlink = mapHyperlinks.find(e => e.id == id);
+                console.assert(mapHyperlink !== undefined, `Couldn't find mapHyperlink with id ${id}`);
+                let newGeojson = Object.assign({}, mapHyperlink.geojson);
                 newGeojson.properties.linkedPostId = document.getElementById(`edit-${id}-linked_post_id`).value;
                 newGeojson.properties.minZoom = document.getElementById(`edit-${id}-post_min_zoom`).value;
                 newGeojson.properties.maxZoom = document.getElementById(`edit-${id}-post_max_zoom`).value;
                 newGeojson.geometry.coordinates = mapHyperlink.getGeometryCoordinates();
-                new wp.api.models.MapHyperlink({
-                    id: id,
-                    slug: id.toString(),
-                    title: newGeojson.properties.title,
-                    content: JSON.stringify(newGeojson)
-                }).save().done((response) => {
+
+                let model = {
+                    title: document.getElementById(`edit-${id}-post_title`).value,
+                    content: JSON.stringify(newGeojson),
+                    status: 'publish'
+                };
+                if (!mapHyperlink.isNew()) {
+                    model.id = mapHyperlink.id;
+                }
+                new wp.api.models.MapHyperlink(model).save().done((response) => {
                     spinner.classList.remove('is-active');
                     console.log(response);
+                    mapHyperlink.id = response.id;
+                    mapHyperlink.title = response.title.raw;
                     mapHyperlink.setGeojson(JSON.parse(response.content.raw));
                 })
-
             }
 
             function cancel(id) {
                 mapHyperlinks.forEach((mapHyperlink) => {
-                    if (mapHyperlink.geojson.id != id) {
+                    if (mapHyperlink.id != id) {
                         return;
                     }
 
@@ -82,10 +96,55 @@ $geoJson_array = array_map(function ($post) {
                 });
             }
 
+            let createCount = 0;
+
+            function create() {
+                let bounds = map.getBounds().pad(-0.3);
+                let zoom = Math.round(map.getZoom());
+                let jsonMapHyperlink = {
+                    id: `new-${createCount}`,
+                    title: '<?php _e('New hyperlink', 'vacarme-plugin') ?>',
+                    geojson: {
+                        type: 'Feature',
+
+                        properties: {
+
+                            minZoom: zoom,
+                            maxZoom: zoom,
+                            linkedPostId: null,
+                        },
+                        geometry: {
+                            type: 'Polygon',
+                            coordinates: [
+                                [
+                                    [bounds.getWest().toFixed(2), bounds.getNorth().toFixed(2)],
+                                    [bounds.getEast().toFixed(2), bounds.getNorth().toFixed(2)],
+                                    [bounds.getEast().toFixed(2), bounds.getSouth().toFixed(2)],
+                                    [bounds.getWest().toFixed(2), bounds.getSouth().toFixed(2)],
+                                    [bounds.getWest().toFixed(2), bounds.getNorth().toFixed(2)]
+                                ]
+                            ]
+                        }
+                    }
+                };
+
+                let listItem = new MapHyperlink(jsonMapHyperlink);
+                mapHyperlinks.unshift(listItem);
+                let listContainer = document.getElementById('map-hyperlink-list');
+                listContainer.insertBefore(listItem.tableRow, listContainer.firstChild);
+                listItem.mapLayer.addTo(map);
+                edit(jsonMapHyperlink.id);
+                createCount++;
+            }
+
             class MapHyperlink {
-                constructor(geojson) {
+                constructor(jsonMapHyperlink) {
                     this.selected = false;
-                    this.setGeojson(geojson);
+                    this.id = jsonMapHyperlink.id;
+                    this.title = jsonMapHyperlink.title;
+                    this.hiddenTableRow = document.createElement('tr');
+                    this.hiddenTableRow.classList.add('hidden');
+                    this.setGeojson(jsonMapHyperlink.geojson);
                 }
 
                 setGeojson(geojson) {
@@ -94,16 +153,20 @@ $geoJson_array = array_map(function ($post) {
                     if (this.tableRow === undefined) {
                         this.tableRow = document.createElement('tr');
                     }
-                    this.tableRow.id = `post-${this.geojson.id}`;
-                    this.tableRow.onclick = () => edit(this.geojson.id);
+                    this.tableRow.id = `post-${this.id}`;
+                    this.tableRow.onclick = () => edit(this.id);
+                    let name = this.title;
+                    if (this.isNew()) {
+                        name += ' — <span class="post-state"><?php _e('Draft') ?>';
+                    }
                     this.tableRow.innerHTML = `
-                        <td><strong>${this.geojson.properties.title}</strong></td>
+                        <td><strong>${name}</span></strong></td>
                     `;
                     // Edit row
                     if (this.editTableRow === undefined) {
                         this.editTableRow = document.createElement('tr');
                     }
-                    this.editTableRow.id = `edit-${this.geojson.id}`;
+                    this.editTableRow.id = `edit-${this.id}`;
                     this.editTableRow.classList.add('inline-edit-row' /*, 'inline-edit-row-page', 'quick-edit-row', 'quick-edit-row-page', 'inline-editor'*/ );
                     this.editTableRow.innerHTML = `
                         <td>
@@ -113,11 +176,11 @@ $geoJson_array = array_map(function ($post) {
                                     <div class="inline-edit-col">
                                         <label>
 							                <span class="title"><?php _e('Title') ?></span>
-                                            <span class="input-text-wrap"><input id="edit-${this.geojson.id}-post_title" type="text" name="post_title" class="ptitle" value=""></span>
+                                            <span class="input-text-wrap"><input id="edit-${this.id}-post_title" type="text" name="post_title" class="ptitle" value=""></span>
                                         </label>
                                         <label>
                                             <span class="title"><?php _e('Page') ?></span>
-                                            <select id="edit-${this.geojson.id}-linked_post_id" name="linked_post_id">
+                                            <select id="edit-${this.id}-linked_post_id" name="linked_post_id">
                                             <?php
                                             foreach (get_pages(array('hierarchical' => true)) as $post) {
                                                 $depth = count(get_post_ancestors($post));
@@ -128,19 +191,19 @@ $geoJson_array = array_map(function ($post) {
                                         </label>
                                         <label>
 							                <span class="title"><?php _e('Min zoom', 'vacarme-plugin') ?></span>
-                                            <span class="input-text-wrap"><input type="text" id="edit-${this.geojson.id}-post_min_zoom" name="post_min_zoom" value=""></span>
+                                            <span class="input-text-wrap"><input type="text" id="edit-${this.id}-post_min_zoom" name="post_min_zoom" value=""></span>
                                         </label>
                                         <label>
 							                <span class="title"><?php _e('Max Zoom', 'vacarme-plugin') ?></span>
-                                            <span class="input-text-wrap"><input type="text" id="edit-${this.geojson.id}-post_max_zoom" name="post_max_zoom" value=""></span>
+                                            <span class="input-text-wrap"><input type="text" id="edit-${this.id}-post_max_zoom" name="post_max_zoom" value=""></span>
                                         </label>
                                     </div>
                                 </fieldset>
                                 <div class="submit inline-edit-save">
 									<input type="hidden" id="_inline_edit" name="_inline_edit" value="1f663d9e2d">
-                                    <button type="button" class="button button-primary save" onclick="update(${this.geojson.id})"><?php _e('Update') ?></button>
-                                    <button type="button" class="button cancel" onclick="cancel(${this.geojson.id})"><?php _e('Cancel') ?></button>
-                                    <span id="edit-${this.geojson.id}-spinner" class="spinner"></span>
+                                    <button type="button" class="button button-primary save" onclick="save('${this.id}')">${this.isNew() ? '<?php _e('Publish') ?>' : '<?php _e('Update') ?>'}</button>
+                                    <button type="button" class="button cancel" onclick="cancel('${this.id}')"><?php _e('Cancel') ?></button>
+                                    <span id="edit-${this.id}-spinner" class="spinner"></span>
                                     <input type="hidden" name="post_view" value="list">
                                     <input type="hidden" name="screen" value="edit-page">
                                     <div class="notice notice-error notice-alt inline hidden"><p class="error"></p></div>			</div>
@@ -203,6 +266,7 @@ $geoJson_array = array_map(function ($post) {
                 onSelected() {
                     if (this.selected) {
                         this.tableRow.parentNode.insertBefore(this.editTableRow, this.tableRow.nextSibling);
+                        this.editTableRow.parentNode.insertBefore(this.hiddenTableRow, this.editTableRow);
                         this.tableRow.style.display = 'none';
                         this.resetEditForm();
 
@@ -210,6 +274,7 @@ $geoJson_array = array_map(function ($post) {
                         this.resizeMarkerLayer.addTo(map);
                     } else {
                         this.editTableRow.remove();
+                        this.hiddenTableRow.remove();
                         this.tableRow.style = '';
 
                         this.mapLayer.setStyle(defaultStyle);
@@ -230,10 +295,10 @@ $geoJson_array = array_map(function ($post) {
                 }
 
                 resetEditForm() {
-                    document.getElementById(`edit-${this.geojson.id}-post_title`).value = this.geojson.properties.title;
-                    document.getElementById(`edit-${this.geojson.id}-linked_post_id`).value = this.geojson.properties.linkedPostId;
-                    document.getElementById(`edit-${this.geojson.id}-post_min_zoom`).value = this.geojson.properties.minZoom;
-                    document.getElementById(`edit-${this.geojson.id}-post_max_zoom`).value = this.geojson.properties.maxZoom;
+                    document.getElementById(`edit-${this.id}-post_title`).value = this.title;
+                    document.getElementById(`edit-${this.id}-linked_post_id`).value = this.geojson.properties.linkedPostId;
+                    document.getElementById(`edit-${this.id}-post_min_zoom`).value = this.geojson.properties.minZoom;
+                    document.getElementById(`edit-${this.id}-post_max_zoom`).value = this.geojson.properties.maxZoom;
                 }
 
                 getGeometryCoordinates() {
@@ -248,19 +313,23 @@ $geoJson_array = array_map(function ($post) {
                     ]
                 }
 
+                isNew() {
+                    return this.id.toString().startsWith('new');
+                }
+
             }
 
-            const oldHyperlinks = [
-                <?php echo join(',', $geoJson_array) ?>
+            const jsonMapHyperlinks = [
+                <?php echo join(',', $json_map_hyperlinks) ?>
             ];
 
             function buildList() {
                 let listContainer = document.getElementById('map-hyperlink-list');
-                oldHyperlinks.forEach((geojson) => {
-                    let listItem = new MapHyperlink(geojson)
-                    mapHyperlinks.push(listItem);
-                    listContainer.appendChild(listItem.tableRow);
-                    listItem.mapLayer.addTo(map);
+                jsonMapHyperlinks.forEach((jsonMapHyperlink) => {
+                    let mapHyperlink = new MapHyperlink(jsonMapHyperlink)
+                    mapHyperlinks.push(mapHyperlink);
+                    listContainer.appendChild(mapHyperlink.tableRow);
+                    mapHyperlink.mapLayer.addTo(map);
                 });
             }
 
