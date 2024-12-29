@@ -27,31 +27,25 @@ $json_map_hyperlinks = array_map(function ($post) {
                 <!-- <button type="button" class="button"><?php _e('Add New Hyperlink', 'vacarme-plugin') ?></button> -->
             </div>
             <table class="widefat wp-list-table fixed striped table-view-list posts">
-                <tbody id="map-hyperlink-list" class="the-list">
-
+                <tbody id="the-list">
                 </tbody>
             </table>
         </div>
         <div id="worldmap" class="worldmap"></div>
         <script>
-            const defaultStyle = {
-                color: '#808080'
-            };
-            const selectedStyle = {
-                color: '#ff0000'
-            };
-
             let mapHyperlinks = [];
 
             function edit(id) {
                 mapHyperlinks.forEach((mapHyperlink) => {
-                    if (mapHyperlink.id == id) {
+                    if (mapHyperlink.id == id || mapHyperlink.selected) {
                         mapHyperlink.selected = !mapHyperlink.selected;
-                        mapHyperlink.onSelected();
-                        mapHyperlink.focus();
-                    } else {
-                        mapHyperlink.selected = false;
-                        mapHyperlink.onSelected();
+                        if (mapHyperlink.selected) {
+                            mapHyperlink.showEdit();
+                            mapHyperlink.focus();
+                        } else {
+                            mapHyperlink.cancelDelete();
+                            mapHyperlink.cancelEdit();
+                        }
                     }
                 });
             }
@@ -78,22 +72,60 @@ $json_map_hyperlinks = array_map(function ($post) {
                 }
                 new wp.api.models.MapHyperlink(model).save().done((response) => {
                     spinner.classList.remove('is-active');
-                    console.log(response);
                     mapHyperlink.id = response.id;
                     mapHyperlink.title = response.title.raw;
                     mapHyperlink.setGeojson(JSON.parse(response.content.raw));
-                })
+                }).fail((response) => {
+                    console.error(response);
+                    spinner.classList.remove('is-active');
+                    mapHyperlink.setErrorMessage(response.status, response.responseJSON.message);
+                });
             }
 
-            function cancel(id) {
+            function deleteComfirm(id) {
+                let spinner = document.getElementById(`edit-${id}-delete-spinner`);
+                spinner.classList.add('is-active');
+
+                let index = mapHyperlinks.findIndex(e => e.id == id);
+                console.assert(index >= 0, `Couldn't find mapHyperlink with id ${id}`);
+                let mapHyperlink = mapHyperlinks[index];
+
+                new wp.api.models.MapHyperlink({
+                    id: id,
+                }).destroy().done((response) => {
+                    console.log(response);
+                    spinner.classList.remove('is-active');
+                    mapHyperlinks.splice(index, 1);
+                    mapHyperlink.destroy();
+                    delete mapHyperlink;
+                }).fail((response) => {
+                    console.error(response);
+                    spinner.classList.remove('is-active');
+                    mapHyperlink.setErrorMessage(response.status, response.responseJSON.message);
+                });
+            }
+
+            function cancelEdit(id) {
                 mapHyperlinks.forEach((mapHyperlink) => {
                     if (mapHyperlink.id != id) {
                         return;
                     }
 
                     mapHyperlink.selected = false;
-                    mapHyperlink.onSelected();
+                    mapHyperlink.cancelEdit();
                 });
+            }
+
+            function showDeleteComfirm(id) {
+                let mapHyperlink = mapHyperlinks.find(e => e.id == id);
+                let actions = document.getElementById(`edit-${id}-actions`);
+                actions.style.display = 'none';
+                actions.parentNode.insertBefore(mapHyperlink.deleteComfirm, actions.nextSibling);
+            }
+
+            function cancelDelete(id) {
+                let mapHyperlink = mapHyperlinks.find(e => e.id == id);
+                mapHyperlink.cancelDelete();
             }
 
             let createCount = 0;
@@ -130,7 +162,7 @@ $json_map_hyperlinks = array_map(function ($post) {
 
                 let listItem = new MapHyperlink(jsonMapHyperlink);
                 mapHyperlinks.unshift(listItem);
-                let listContainer = document.getElementById('map-hyperlink-list');
+                let listContainer = document.getElementById('the-list');
                 listContainer.insertBefore(listItem.tableRow, listContainer.firstChild);
                 listItem.mapLayer.addTo(map);
                 edit(jsonMapHyperlink.id);
@@ -149,6 +181,7 @@ $json_map_hyperlinks = array_map(function ($post) {
 
                 setGeojson(geojson) {
                     this.geojson = geojson;
+
                     // Row
                     if (this.tableRow === undefined) {
                         this.tableRow = document.createElement('tr');
@@ -162,6 +195,7 @@ $json_map_hyperlinks = array_map(function ($post) {
                     this.tableRow.innerHTML = `
                         <td><strong>${name}</span></strong></td>
                     `;
+
                     // Edit row
                     if (this.editTableRow === undefined) {
                         this.editTableRow = document.createElement('tr');
@@ -170,7 +204,7 @@ $json_map_hyperlinks = array_map(function ($post) {
                     this.editTableRow.classList.add('inline-edit-row' /*, 'inline-edit-row-page', 'quick-edit-row', 'quick-edit-row-page', 'inline-editor'*/ );
                     this.editTableRow.innerHTML = `
                         <td>
-                            <div class="inline-edit-row inline-edit-wrapper" role="region">
+                            <div class="inline-edit-wrapper" role="region">
                                 <fieldset>
                                     <legend class="inline-edit-legend"><?php _e('Edit') ?></legend>
                                     <div class="inline-edit-col">
@@ -199,17 +233,31 @@ $json_map_hyperlinks = array_map(function ($post) {
                                         </label>
                                     </div>
                                 </fieldset>
-                                <div class="submit inline-edit-save">
-									<input type="hidden" id="_inline_edit" name="_inline_edit" value="1f663d9e2d">
+                                <div id="edit-${this.id}-actions" class="submit inline-edit-save">
                                     <button type="button" class="button button-primary save" onclick="save('${this.id}')">${this.isNew() ? '<?php _e('Publish') ?>' : '<?php _e('Update') ?>'}</button>
-                                    <button type="button" class="button cancel" onclick="cancel('${this.id}')"><?php _e('Cancel') ?></button>
+                                    <button type="button" class="button cancel" onclick="cancelEdit('${this.id}')"><?php _e('Cancel') ?></button>
                                     <span id="edit-${this.id}-spinner" class="spinner"></span>
-                                    <input type="hidden" name="post_view" value="list">
-                                    <input type="hidden" name="screen" value="edit-page">
-                                    <div class="notice notice-error notice-alt inline hidden"><p class="error"></p></div>			</div>
+                                    <span class="trash" style="margin-left:auto;">
+                                        <a id="edit-${this.id}-trash" class="submitdelete" onclick="showDeleteComfirm('${this.id}')" style="color:#b32d2e;cursor:pointer;"><?php _e('Delete') ?></a>
+                                    </span>
+                                </div>
+                                <div id="edit-${this.id}-notice-error" class="notice notice-error notice-alt inline hidden"><p class="error"></p></div>
                             </div>
                         </td>
                     `;
+
+                    // Delete Confirm
+                    if (this.deleteComfirm === undefined) {
+                        this.deleteComfirm = document.createElement('div');
+                    }
+                    this.deleteComfirm.classList.add('submit', 'inline-edit-save');
+                    this.deleteComfirm.innerHTML = `
+                        <b style="color: #b32d2e;margin-left:auto;margin-right:8px;"><?php _e('Are you sure?', 'vacarme-plugin') ?></b>
+                        <button type="button" class="button button-delete" onclick="deleteComfirm('${this.id}')"><?php _e('Delete') ?></button>
+                        <button type="button" class="button cancel" onclick="cancelDelete('${this.id}')"><?php _e('Cancel') ?></button>
+                        <span id="edit-${this.id}-delete-spinner" class="spinner"></span>
+                    `;
+
                     // Bounds
                     let latLngs = L.GeoJSON.coordsToLatLngs(this.geojson.geometry.coordinates[0]);
                     this.northEast = latLngs[0];
@@ -217,43 +265,45 @@ $json_map_hyperlinks = array_map(function ($post) {
                     this.center = L.latLngBounds(this.northEast, this.southWest).getCenter();
                     // Rect layer
                     if (this.mapLayer === undefined) {
-                        this.mapLayer = L.rectangle(L.latLngBounds(this.northEast, this.southWest), defaultStyle);
+                        this.mapLayer = L.rectangle(L.latLngBounds(this.northEast, this.southWest), {});
+                        this.mapLayer.on('click', (e) => {
+                            if (this.selected) return;
+                            edit(this.id);
+                        })
                     } else {
                         this.mapLayer.setBounds(L.latLngBounds(this.northEast, this.southWest));
-                        this.mapLayer.setStyle(defaultStyle);
                     }
+                    this.updateLayerStyles();
+
+                    let markerOptions = {
+                        icon: handleIcon,
+                        draggable: true,
+                    }
+
                     // Marker layers
                     if (this.markers === undefined) {
                         this.markers = [];
                         this.markers.push(
-                            L.marker(latLngs[0], {
-                                draggable: true
-                            }).on('drag', (e) => {
+                            L.marker(latLngs[0], markerOptions).on('drag', (e) => {
                                 this.northEast = e.latlng;
                                 this.updateCoordinates();
                             })
                         );
                         this.markers.push(
-                            L.marker(latLngs[1], {
-                                draggable: true
-                            }).on('drag', (e) => {
+                            L.marker(latLngs[1], markerOptions).on('drag', (e) => {
                                 this.northEast.lat = e.latlng.lat;
                                 this.southWest.lng = e.latlng.lng;
                                 this.updateCoordinates();
                             })
                         );
                         this.markers.push(
-                            L.marker(latLngs[2], {
-                                draggable: true
-                            }).on('drag', (e) => {
+                            L.marker(latLngs[2], markerOptions).on('drag', (e) => {
                                 this.southWest = e.latlng;
                                 this.updateCoordinates();
                             })
                         );
                         this.markers.push(
-                            L.marker(latLngs[3], {
-                                draggable: true
-                            }).on('drag', (e) => {
+                            L.marker(latLngs[3], markerOptions).on('drag', (e) => {
                                 this.northEast.lng = e.latlng.lng;
                                 this.southWest.lat = e.latlng.lat;
                                 this.updateCoordinates();
@@ -263,27 +313,35 @@ $json_map_hyperlinks = array_map(function ($post) {
                     }
                 }
 
-                onSelected() {
-                    if (this.selected) {
-                        this.tableRow.parentNode.insertBefore(this.editTableRow, this.tableRow.nextSibling);
-                        this.editTableRow.parentNode.insertBefore(this.hiddenTableRow, this.editTableRow);
-                        this.tableRow.style.display = 'none';
-                        this.resetEditForm();
+                showEdit() {
+                    this.tableRow.parentNode.insertBefore(this.editTableRow, this.tableRow.nextSibling);
+                    this.editTableRow.parentNode.insertBefore(this.hiddenTableRow, this.editTableRow);
+                    this.tableRow.style.display = 'none';
+                    this.resetEditForm();
+                    this.resizeMarkerLayer.addTo(map);
+                    this.updateLayerStyles();
+                }
 
-                        this.mapLayer.setStyle(selectedStyle);
-                        this.resizeMarkerLayer.addTo(map);
-                    } else {
-                        this.editTableRow.remove();
-                        this.hiddenTableRow.remove();
-                        this.tableRow.style = '';
+                cancelEdit() {
+                    this.editTableRow.remove();
+                    this.hiddenTableRow.remove();
+                    this.tableRow.style = '';
+                    this.resizeMarkerLayer.removeFrom(map);
+                    this.updateLayerStyles();
+                    this.clearErrorMessage();
+                }
 
-                        this.mapLayer.setStyle(defaultStyle);
-                        this.resizeMarkerLayer.removeFrom(map);
-                    }
+                destroy() {
+                    this.tableRow.remove();
+                    this.editTableRow.remove();
+                    this.hiddenTableRow.remove();
+                    this.deleteComfirm.remove();
+                    this.resizeMarkerLayer.removeFrom(map);
+                    this.mapLayer.removeFrom(map);
                 }
 
                 focus() {
-                    map.setView(this.mapLayer.getBounds().getCenter(), this.geojson.properties.zoom);
+                    map.setView(this.mapLayer.getBounds().getCenter(), this.geojson.properties.minZoom);
                 }
 
                 updateCoordinates() {
@@ -317,6 +375,40 @@ $json_map_hyperlinks = array_map(function ($post) {
                     return this.id.toString().startsWith('new');
                 }
 
+                updateLayerStyles() {
+                    let zoom = map.getZoom();
+                    let insideZoom = zoom >= this.geojson.properties.minZoom && zoom < this.geojson.properties.maxZoom;
+                    let style = {
+                        color: this.selected ? (insideZoom ? '#3388ff' : '#b32d2e') : '#808080',
+                        // fillOpacity: insideZoom ? 1.0 : 0.3,
+                    }
+                    this.mapLayer.setStyle(style);
+                }
+
+                cancelDelete() {
+                    let actions = document.getElementById(`edit-${this.id}-actions`);
+                    actions.style.display = '';
+                    this.deleteComfirm.remove();
+                    this.clearErrorMessage();
+                }
+
+                setErrorMessage(status, message) {
+                    let errorContainer = document.getElementById(`edit-${this.id}-notice-error`);
+                    if (errorContainer === null) {
+                        return;
+                    }
+                    errorContainer.classList.remove('hidden');
+                    errorContainer.firstChild.textContent = `(${status}) ${message}`;
+                }
+
+                clearErrorMessage() {
+                    let errorContainer = document.getElementById(`edit-${this.id}-notice-error`);
+                    if (errorContainer === null) {
+                        return;
+                    }
+                    errorContainer.classList.add('hidden');
+                    errorContainer.firstChild.textContent = '';
+                }
             }
 
             const jsonMapHyperlinks = [
@@ -324,7 +416,7 @@ $json_map_hyperlinks = array_map(function ($post) {
             ];
 
             function buildList() {
-                let listContainer = document.getElementById('map-hyperlink-list');
+                let listContainer = document.getElementById('the-list');
                 jsonMapHyperlinks.forEach((jsonMapHyperlink) => {
                     let mapHyperlink = new MapHyperlink(jsonMapHyperlink)
                     mapHyperlinks.push(mapHyperlink);
@@ -334,6 +426,11 @@ $json_map_hyperlinks = array_map(function ($post) {
             }
 
             let map = null;
+
+            const handleIcon = L.divIcon({
+                html: '<svg viewBox="0 0 12 12" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"></svg>',
+                iconSize: [12, 12],
+            });
 
             window.onload = (event) => {
                 const ZoomViewer = L.Control.extend({
@@ -373,20 +470,17 @@ $json_map_hyperlinks = array_map(function ($post) {
                     attribution: '&copy; Vacarme'
                 }).addTo(map);
 
+                map.on('zoomend', (e) => {
+                    mapHyperlinks.forEach((hyperlink) => {
+                        hyperlink.updateLayerStyles();
+                    })
+                })
+
                 const zoomViewerControl = (new ZoomViewer()).addTo(map);
                 const coordinatesViewerControl = (new CoordinatesViewer()).addTo(map);
 
                 buildList();
 
-
-                function hyperlinksStyle(feature) {
-                    let zoom = map.getZoom();
-                    return {
-                        stroke: false,
-                        // fill: zoom >= feature.properties.zoom && zoom < feature.properties.zoom + 1
-                        fill: true
-                    }
-                }
 
                 function hyperlinksOnEachFeature(feature, layer) {
                     if (feature.properties && feature.properties.url) {
