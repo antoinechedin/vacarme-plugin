@@ -36,18 +36,18 @@ $json_map_hyperlinks = array_map(function ($post) {
             let mapHyperlinks = [];
 
             function edit(id) {
-                mapHyperlinks.forEach((mapHyperlink) => {
+                for (let i = mapHyperlinks.length - 1; i >= 0; i--) {
+                    let mapHyperlink = mapHyperlinks[i];
                     if (mapHyperlink.id == id || mapHyperlink.selected) {
                         mapHyperlink.selected = !mapHyperlink.selected;
                         if (mapHyperlink.selected) {
                             mapHyperlink.showEdit();
                             mapHyperlink.focus();
                         } else {
-                            mapHyperlink.cancelDelete();
-                            mapHyperlink.cancelEdit();
+                            cancelEdit(mapHyperlink.id);
                         }
                     }
-                });
+                }
             }
 
             function save(id) {
@@ -75,6 +75,7 @@ $json_map_hyperlinks = array_map(function ($post) {
                     mapHyperlink.id = response.id;
                     mapHyperlink.title = response.title.raw;
                     mapHyperlink.setGeojson(JSON.parse(response.content.raw));
+                    mapHyperlink.hideEdit();
                 }).fail((response) => {
                     console.error(response);
                     spinner.classList.remove('is-active');
@@ -106,14 +107,17 @@ $json_map_hyperlinks = array_map(function ($post) {
             }
 
             function cancelEdit(id) {
-                mapHyperlinks.forEach((mapHyperlink) => {
-                    if (mapHyperlink.id != id) {
-                        return;
-                    }
-
-                    mapHyperlink.selected = false;
-                    mapHyperlink.cancelEdit();
-                });
+                let index = mapHyperlinks.findIndex(e => e.id == id);
+                let mapHyperlink = mapHyperlinks[index];
+                if (mapHyperlink.isNew()) {
+                    mapHyperlinks.splice(index, 1);
+                    mapHyperlink.destroy();
+                    delete mapHyperlink;
+                } else {
+                    mapHyperlink.resetMapLayers();
+                    mapHyperlink.cancelDelete();
+                    mapHyperlink.hideEdit();
+                }
             }
 
             function showDeleteComfirm(id) {
@@ -138,11 +142,9 @@ $json_map_hyperlinks = array_map(function ($post) {
                     title: '<?php _e('New hyperlink', 'vacarme-plugin') ?>',
                     geojson: {
                         type: 'Feature',
-
                         properties: {
-
                             minZoom: zoom,
-                            maxZoom: zoom,
+                            maxZoom: zoom + 1,
                             linkedPostId: null,
                         },
                         geometry: {
@@ -237,8 +239,8 @@ $json_map_hyperlinks = array_map(function ($post) {
                                     <button type="button" class="button button-primary save" onclick="save('${this.id}')">${this.isNew() ? '<?php _e('Publish') ?>' : '<?php _e('Update') ?>'}</button>
                                     <button type="button" class="button cancel" onclick="cancelEdit('${this.id}')"><?php _e('Cancel') ?></button>
                                     <span id="edit-${this.id}-spinner" class="spinner"></span>
-                                    <span class="trash" style="margin-left:auto;">
-                                        <a id="edit-${this.id}-trash" class="submitdelete" onclick="showDeleteComfirm('${this.id}')" style="color:#b32d2e;cursor:pointer;"><?php _e('Delete') ?></a>
+                                    <span class="${this.isNew() ? 'hidden' : ''}" style="margin-left:auto;">
+                                        <button id="edit-${this.id}-delete" class="button-link" onclick="showDeleteComfirm('${this.id}')" style="color:#b32d2e;"><?php _e('Delete') ?></a>
                                     </span>
                                 </div>
                                 <div id="edit-${this.id}-notice-error" class="notice notice-error notice-alt inline hidden"><p class="error"></p></div>
@@ -310,10 +312,13 @@ $json_map_hyperlinks = array_map(function ($post) {
                             })
                         );
                         this.resizeMarkerLayer = L.featureGroup(this.markers);
+                    } else {
+                        this.updateCoordinates();
                     }
                 }
 
                 showEdit() {
+                    this.selected = true;
                     this.tableRow.parentNode.insertBefore(this.editTableRow, this.tableRow.nextSibling);
                     this.editTableRow.parentNode.insertBefore(this.hiddenTableRow, this.editTableRow);
                     this.tableRow.style.display = 'none';
@@ -322,7 +327,8 @@ $json_map_hyperlinks = array_map(function ($post) {
                     this.updateLayerStyles();
                 }
 
-                cancelEdit() {
+                hideEdit() {
+                    this.selected = false;
                     this.editTableRow.remove();
                     this.hiddenTableRow.remove();
                     this.tableRow.style = '';
@@ -409,6 +415,13 @@ $json_map_hyperlinks = array_map(function ($post) {
                     errorContainer.classList.add('hidden');
                     errorContainer.firstChild.textContent = '';
                 }
+
+                resetMapLayers() {
+                    let latLngs = L.GeoJSON.coordsToLatLngs(this.geojson.geometry.coordinates[0]);
+                    this.northEast = latLngs[0];
+                    this.southWest = latLngs[2];
+                    this.updateCoordinates();
+                }
             }
 
             const jsonMapHyperlinks = [
@@ -428,7 +441,6 @@ $json_map_hyperlinks = array_map(function ($post) {
             let map = null;
 
             const handleIcon = L.divIcon({
-                html: '<svg viewBox="0 0 12 12" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"></svg>',
                 iconSize: [12, 12],
             });
 

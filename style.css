@@ -15,14 +15,3 @@
 .worldmap {
     align-self: stretch;
 }
-
-.button-delete {
-    background: #b32d2e !important;
-    border-color: #b32d2e !important;
-    color: #fff !important;
-}
-
-.button-delete:hover {
-    background: #9c2727 !important;
-    border-color: #9c2727 !important;
-}
