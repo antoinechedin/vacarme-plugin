@@ -15,3 +15,29 @@
 .worldmap {
     align-self: stretch;
 }
+
+fieldset.oneline-fieldset {
+    display: block !important;
+    margin: .2em 0 !important;
+    line-height: 2.5 !important;
+}
+
+.oneline-fieldset>legend {
+    display: block !important;
+    float: left !important;
+    width: 6em !important;
+    line-height: 2.5 !important;
+    padding: 0 !important;
+}
+
+.oneline-container {
+    display: block !important;
+    margin-left: 6em !important;
+}
+
+.oneline-container button,
+.oneline-container label {
+    display: inline-block !important;
+    margin: 0 !important;
+    vertical-align: baseline !important;
+}

@@ -35,6 +35,16 @@ $json_map_hyperlinks = array_map(function ($post) {
         <script>
             let mapHyperlinks = [];
 
+            function zoomTo(id, t = 0) {
+                let mapHyperlink = mapHyperlinks.find(e => e.id == id);
+                mapHyperlink.focus(t)
+            }
+
+            function update(id) {
+                let mapHyperlink = mapHyperlinks.find(e => e.id == id);
+                mapHyperlink.updateLayerStyles();
+            }
+
             function edit(id) {
                 for (let i = mapHyperlinks.length - 1; i >= 0; i--) {
                     let mapHyperlink = mapHyperlinks[i];
@@ -51,19 +61,29 @@ $json_map_hyperlinks = array_map(function ($post) {
             }
 
             function save(id) {
+                let titleEl = document.getElementById(`edit-${id}-post_title`);
+                let linkedPostEl = document.getElementById(`edit-${id}-linked_post_id`);
+                let minZoomEl = document.getElementById(`edit-${id}-post_min_zoom`);
+                let maxZoomEl = document.getElementById(`edit-${id}-post_max_zoom`);
+
+                if (!titleEl.reportValidity()) return;
+                if (!linkedPostEl.reportValidity()) return;
+                if (!minZoomEl.reportValidity()) return;
+                if (!maxZoomEl.reportValidity()) return;
+
                 let spinner = document.getElementById(`edit-${id}-spinner`);
                 spinner.classList.add('is-active');
 
                 let mapHyperlink = mapHyperlinks.find(e => e.id == id);
                 console.assert(mapHyperlink !== undefined, `Couldn't find mapHyperlink with id ${id}`);
                 let newGeojson = Object.assign({}, mapHyperlink.geojson);
-                newGeojson.properties.linkedPostId = document.getElementById(`edit-${id}-linked_post_id`).value;
-                newGeojson.properties.minZoom = document.getElementById(`edit-${id}-post_min_zoom`).value;
-                newGeojson.properties.maxZoom = document.getElementById(`edit-${id}-post_max_zoom`).value;
+                newGeojson.properties.linkedPostId = linkedPostEl.value;
+                newGeojson.properties.minZoom = minZoomEl.value;
+                newGeojson.properties.maxZoom = maxZoomEl.value;
                 newGeojson.geometry.coordinates = mapHyperlink.getGeometryCoordinates();
 
                 let model = {
-                    title: document.getElementById(`edit-${id}-post_title`).value,
+                    title: titleEl.value ? titleEl.value : titleEl.placeholder,
                     content: JSON.stringify(newGeojson),
                     status: 'publish'
                 };
@@ -136,10 +156,10 @@ $json_map_hyperlinks = array_map(function ($post) {
 
             function create() {
                 let bounds = map.getBounds().pad(-0.3);
-                let zoom = Math.round(map.getZoom());
+                let zoom = Math.floor(map.getZoom());
                 let jsonMapHyperlink = {
                     id: `new-${createCount}`,
-                    title: '<?php _e('New hyperlink', 'vacarme-plugin') ?>',
+                    title: `<?php _e('Untitled', 'vacarme-plugin') ?> ${createCount + 1}`,
                     geojson: {
                         type: 'Feature',
                         properties: {
@@ -166,7 +186,7 @@ $json_map_hyperlinks = array_map(function ($post) {
                 mapHyperlinks.unshift(listItem);
                 let listContainer = document.getElementById('the-list');
                 listContainer.insertBefore(listItem.tableRow, listContainer.firstChild);
-                listItem.mapLayer.addTo(map);
+                listItem.rectLayer.addTo(map);
                 edit(jsonMapHyperlink.id);
                 createCount++;
             }
@@ -212,11 +232,11 @@ $json_map_hyperlinks = array_map(function ($post) {
                                     <div class="inline-edit-col">
                                         <label>
 							                <span class="title"><?php _e('Title') ?></span>
-                                            <span class="input-text-wrap"><input id="edit-${this.id}-post_title" type="text" name="post_title" class="ptitle" value=""></span>
+                                            <span class="input-text-wrap"><input id="edit-${this.id}-post_title" type="text" name="post_title" class="ptitle"></span>
                                         </label>
                                         <label>
                                             <span class="title"><?php _e('Page') ?></span>
-                                            <select id="edit-${this.id}-linked_post_id" name="linked_post_id">
+                                            <select id="edit-${this.id}-linked_post_id" name="linked_post_id" required>
                                             <?php
                                             foreach (get_pages(array('hierarchical' => true)) as $post) {
                                                 $depth = count(get_post_ancestors($post));
@@ -225,14 +245,21 @@ $json_map_hyperlinks = array_map(function ($post) {
                                             ?>
                                             </select>
                                         </label>
-                                        <label>
-							                <span class="title"><?php _e('Min zoom', 'vacarme-plugin') ?></span>
-                                            <span class="input-text-wrap"><input type="text" id="edit-${this.id}-post_min_zoom" name="post_min_zoom" value=""></span>
-                                        </label>
-                                        <label>
-							                <span class="title"><?php _e('Max Zoom', 'vacarme-plugin') ?></span>
-                                            <span class="input-text-wrap"><input type="text" id="edit-${this.id}-post_max_zoom" name="post_max_zoom" value=""></span>
-                                        </label>
+                                        <fieldset class="oneline-fieldset">
+                                            <legend><span class="title"><?php _e('Zoom min', 'vacarme-plugin') ?></span></legend>
+                                            <div class="oneline-container">
+                                                <label>
+                                                    <input type="number" id="edit-${this.id}-post_min_zoom" name="post_min_zoom" size="2" onchange="update('${this.id}')">
+                                                </label>
+                                                <button type="button" class="button-link" onclick="zoomTo('${this.id}', 0)"><span class="dashicons dashicons-search"></span></button>
+                                                &emsp;&emsp;<?php _e('max', 'vacarme-plugin') ?>
+                                                <label>
+                                                    <input type="number" id="edit-${this.id}-post_max_zoom" name="post_max_zoom" size="2" onchange="update('${this.id}')">  
+                                                </label>
+                                                <button type="button" class="button-link" onclick="zoomTo('${this.id}', 1)"><span class="dashicons dashicons-search"></span></button>
+                                            </div>
+                                        </fieldset>
+                                       
                                     </div>
                                 </fieldset>
                                 <div id="edit-${this.id}-actions" class="submit inline-edit-save">
@@ -266,14 +293,16 @@ $json_map_hyperlinks = array_map(function ($post) {
                     this.southWest = latLngs[2];
                     this.center = L.latLngBounds(this.northEast, this.southWest).getCenter();
                     // Rect layer
-                    if (this.mapLayer === undefined) {
-                        this.mapLayer = L.rectangle(L.latLngBounds(this.northEast, this.southWest), {});
-                        this.mapLayer.on('click', (e) => {
+                    if (this.rectLayer === undefined) {
+                        this.rectLayer = L.rectangle(L.latLngBounds(this.northEast, this.southWest), {
+                            className: 'rectangle'
+                        });
+                        this.rectLayer.on('click', (e) => {
                             if (this.selected) return;
                             edit(this.id);
                         })
                     } else {
-                        this.mapLayer.setBounds(L.latLngBounds(this.northEast, this.southWest));
+                        this.rectLayer.setBounds(L.latLngBounds(this.northEast, this.southWest));
                     }
                     this.updateLayerStyles();
 
@@ -343,15 +372,23 @@ $json_map_hyperlinks = array_map(function ($post) {
                     this.hiddenTableRow.remove();
                     this.deleteComfirm.remove();
                     this.resizeMarkerLayer.removeFrom(map);
-                    this.mapLayer.removeFrom(map);
+                    this.rectLayer.removeFrom(map);
                 }
 
-                focus() {
-                    map.setView(this.mapLayer.getBounds().getCenter(), this.geojson.properties.minZoom);
+                focus(t = 0) {
+                    let minZoomEl = document.getElementById(`edit-${this.id}-post_min_zoom`);
+                    let maxZoomEl = document.getElementById(`edit-${this.id}-post_max_zoom`);
+                    let zoom;
+                    if (minZoomEl && maxZoomEl) {
+                        zoom = minZoomEl.value * (1 - t) + maxZoomEl.value * t;
+                    } else {
+                        zoom = this.geojson.properties.minZoom * (1 - t) + this.geojson.properties.maxZoom * t;
+                    }
+                    map.setView(this.rectLayer.getBounds().getCenter(), zoom);
                 }
 
                 updateCoordinates() {
-                    this.mapLayer.setBounds(L.latLngBounds(this.northEast, this.southWest));
+                    this.rectLayer.setBounds(L.latLngBounds(this.northEast, this.southWest));
                     this.markers[0].setLatLng(this.northEast);
                     this.markers[1].setLatLng(L.latLng(this.northEast.lat, this.southWest.lng));
                     this.markers[2].setLatLng(this.southWest);
@@ -359,7 +396,11 @@ $json_map_hyperlinks = array_map(function ($post) {
                 }
 
                 resetEditForm() {
-                    document.getElementById(`edit-${this.id}-post_title`).value = this.title;
+                    if (this.isNew()) {
+                        document.getElementById(`edit-${this.id}-post_title`).placeholder = this.title;
+                    } else {
+                        document.getElementById(`edit-${this.id}-post_title`).value = this.title;
+                    }
                     document.getElementById(`edit-${this.id}-linked_post_id`).value = this.geojson.properties.linkedPostId;
                     document.getElementById(`edit-${this.id}-post_min_zoom`).value = this.geojson.properties.minZoom;
                     document.getElementById(`edit-${this.id}-post_max_zoom`).value = this.geojson.properties.maxZoom;
@@ -382,13 +423,26 @@ $json_map_hyperlinks = array_map(function ($post) {
                 }
 
                 updateLayerStyles() {
-                    let zoom = map.getZoom();
-                    let insideZoom = zoom >= this.geojson.properties.minZoom && zoom < this.geojson.properties.maxZoom;
-                    let style = {
-                        color: this.selected ? (insideZoom ? '#3388ff' : '#b32d2e') : '#808080',
-                        // fillOpacity: insideZoom ? 1.0 : 0.3,
+                    let style;
+                    if (this.selected) {
+                        let zoom = map.getZoom();
+                        let minZoomEl = document.getElementById(`edit-${this.id}-post_min_zoom`);
+                        let maxZoomEl = document.getElementById(`edit-${this.id}-post_max_zoom`);
+                        let insideZoom;
+                        if (minZoomEl && maxZoomEl) {
+                            insideZoom = zoom >= minZoomEl.value && zoom < maxZoomEl.value;
+                        } else {
+                            insideZoom = zoom >= this.geojson.properties.minZoom && zoom < this.geojson.properties.maxZoom;
+                        }
+                        style = {
+                            color: insideZoom ? '#3388ff' : '#b32d2e',
+                        }
+                    } else {
+                        style = {
+                            color: '#808080',
+                        }
                     }
-                    this.mapLayer.setStyle(style);
+                    this.rectLayer.setStyle(style);
                 }
 
                 cancelDelete() {
@@ -434,7 +488,7 @@ $json_map_hyperlinks = array_map(function ($post) {
                     let mapHyperlink = new MapHyperlink(jsonMapHyperlink)
                     mapHyperlinks.push(mapHyperlink);
                     listContainer.appendChild(mapHyperlink.tableRow);
-                    mapHyperlink.mapLayer.addTo(map);
+                    mapHyperlink.rectLayer.addTo(map);
                 });
             }
 
@@ -510,10 +564,6 @@ $json_map_hyperlinks = array_map(function ($post) {
                 //     onEachFeature: hyperlinksOnEachFeature
                 // }).addTo(map);
                 // map.on('zoomend', (e) => hyperlinksLayer.resetStyle());
-            }
-
-            function focus() {
-                console.log('click');
             }
         </script>
     </div>
