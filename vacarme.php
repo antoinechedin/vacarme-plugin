@@ -46,7 +46,7 @@ function VacarmeCustomBlocksInit()
 }
 add_action('init', 'VacarmeCustomBlocksInit');
 
-function VacarmeQuestPostType()
+/* function VacarmeQuestPostType()
 {
 	register_post_type(
 		VACARME_QUEST,
@@ -74,9 +74,9 @@ function VacarmeQuestPostType()
 		),
 	);
 }
-add_action('init', 'VacarmeQuestPostType');
+add_action('init', 'VacarmeQuestPostType'); */
 
-function VacarmeAddCustomBox()
+/* function VacarmeAddCustomBox()
 {
 	add_meta_box(
 		'vacarme_geojson',
@@ -84,7 +84,7 @@ function VacarmeAddCustomBox()
 		'wporg_custom_box_html',
 		array(VACARME_QUEST),
 	);
-}
+} */
 //add_action( 'add_meta_boxes', 'VacarmeAddCustomBox' );
 
 
@@ -101,14 +101,14 @@ function VacarmeWorldMapMenu(): void
 		'dashicons-admin-site',
 		40
 	);
-	add_submenu_page(
+	/* add_submenu_page(
 		$world_map_menu_slug,
 		__('Locations', 'vacarme-plugin'),
 		__('Locations', 'vacarme-plugin'),
 		'edit_posts',
 		'vacarme_world_map_menu_location',
 		'VacarmeWorldMapMenuRender'
-	);
+	); */
 }
 function VacarmeWorldMapMenuRender(): void
 {
@@ -124,7 +124,7 @@ function VacarmeMapLocationPostType(): void
 				'name' => __('Locations', 'vacarme-plugin'),
 				'singular_name' => __('Location', 'vacarme-plugin')
 			),
-			'public' => true,
+			'public' => false,
 			'show_in_rest' => true,
 		)
 	);
