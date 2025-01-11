@@ -41,3 +41,33 @@ fieldset.oneline-fieldset {
     margin: 0 !important;
     vertical-align: baseline !important;
 }
+
+.leaflet-marker-icon.nw-handle-icon {
+    background: #fff;
+    border: 1px solid #666;
+    cursor: nw-resize;
+}
+
+.leaflet-marker-icon.ne-handle-icon {
+    background: #fff;
+    border: 1px solid #666;
+    cursor: ne-resize;
+}
+
+.leaflet-marker-icon.sw-handle-icon {
+    background: #fff;
+    border: 1px solid #666;
+    cursor: sw-resize;
+}
+
+.leaflet-marker-icon.se-handle-icon {
+    background: #fff;
+    border: 1px solid #666;
+    cursor: se-resize;
+}
+
+.leaflet-marker-icon.move-handle-icon {
+    background: #fff;
+    border: 1px solid #666;
+    cursor: move;
+}

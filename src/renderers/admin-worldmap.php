@@ -290,7 +290,7 @@ $json_map_hyperlinks = array_map(function ($post) {
                     // Rect layer
                     if (this.rectLayer === undefined) {
                         this.rectLayer = L.rectangle(L.latLngBounds(this.northEast, this.southWest), {
-                            className: 'rectangle'
+                            className: 'rectangle',
                         });
                         this.rectLayer.on('click', (e) => {
                             if (this.selected) return;
@@ -301,8 +301,41 @@ $json_map_hyperlinks = array_map(function ($post) {
                     }
                     this.updateLayerStyles();
 
-                    let markerOptions = {
-                        icon: handleIcon,
+
+                    const northWestMarkerOptions = {
+                        icon: L.divIcon({
+                            iconSize: [12, 12],
+                            className: 'nw-handle-icon',
+                        }),
+                        draggable: true,
+                    }
+                    const northEastMarkerOptions = {
+                        icon: L.divIcon({
+                            iconSize: [12, 12],
+                            className: 'ne-handle-icon',
+                        }),
+                        draggable: true,
+                    }
+                    const southWestMarkerOptions = {
+                        icon: L.divIcon({
+                            iconSize: [12, 12],
+                            className: 'sw-handle-icon',
+                        }),
+                        draggable: true,
+                    }
+                    const southEastMarkerOptions = {
+                        icon: L.divIcon({
+                            iconSize: [12, 12],
+                            className: 'se-handle-icon',
+                        }),
+                        draggable: true,
+                    }
+
+                    const centerMarkerOptions = {
+                        icon: L.divIcon({
+                            iconSize: [12, 12],
+                            className: 'move-handle-icon',
+                        }),
                         draggable: true,
                     }
 
@@ -310,28 +343,38 @@ $json_map_hyperlinks = array_map(function ($post) {
                     if (this.markers === undefined) {
                         this.markers = [];
                         this.markers.push(
-                            L.marker(latLngs[0], markerOptions).on('drag', (e) => {
+                            L.marker(latLngs[0], northWestMarkerOptions).on('drag', (e) => {
                                 this.northEast = e.latlng;
                                 this.updateCoordinates();
                             })
                         );
                         this.markers.push(
-                            L.marker(latLngs[1], markerOptions).on('drag', (e) => {
+                            L.marker(latLngs[1], northEastMarkerOptions).on('drag', (e) => {
                                 this.northEast.lat = e.latlng.lat;
                                 this.southWest.lng = e.latlng.lng;
                                 this.updateCoordinates();
                             })
                         );
                         this.markers.push(
-                            L.marker(latLngs[2], markerOptions).on('drag', (e) => {
+                            L.marker(latLngs[2], southEastMarkerOptions).on('drag', (e) => {
                                 this.southWest = e.latlng;
                                 this.updateCoordinates();
                             })
                         );
                         this.markers.push(
-                            L.marker(latLngs[3], markerOptions).on('drag', (e) => {
+                            L.marker(latLngs[3], southWestMarkerOptions).on('drag', (e) => {
                                 this.northEast.lng = e.latlng.lng;
                                 this.southWest.lat = e.latlng.lat;
+                                this.updateCoordinates();
+                            })
+                        );
+                        this.markers.push(
+                            L.marker(this.center, centerMarkerOptions).on('drag', (e) => {
+                                let delta = L.latLng(e.latlng.lat - this.center.lat, e.latlng.lng - this.center.lng);
+                                this.northEast.lat += delta.lat;
+                                this.northEast.lng += delta.lng;
+                                this.southWest.lat += delta.lat;
+                                this.southWest.lng += delta.lng;
                                 this.updateCoordinates();
                             })
                         );
@@ -383,11 +426,13 @@ $json_map_hyperlinks = array_map(function ($post) {
                 }
 
                 updateCoordinates() {
+                    this.center = L.latLngBounds(this.northEast, this.southWest).getCenter();
                     this.rectLayer.setBounds(L.latLngBounds(this.northEast, this.southWest));
                     this.markers[0].setLatLng(this.northEast);
                     this.markers[1].setLatLng(L.latLng(this.northEast.lat, this.southWest.lng));
                     this.markers[2].setLatLng(this.southWest);
                     this.markers[3].setLatLng(L.latLng(this.southWest.lat, this.northEast.lng));
+                    this.markers[4].setLatLng(this.center);
                 }
 
                 resetEditForm() {
@@ -489,9 +534,7 @@ $json_map_hyperlinks = array_map(function ($post) {
 
             let map = null;
 
-            const handleIcon = L.divIcon({
-                iconSize: [12, 12],
-            });
+
 
             window.onload = (event) => {
                 const ZoomViewer = L.Control.extend({
