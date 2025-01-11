@@ -1,4 +1,4 @@
-# Copyright (C) 2024 Antoine Chedin
+# Copyright (C) 2025 Antoine Chedin
 # This file is distributed under the MIT.
 msgid ""
 msgstr ""
@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2024-12-21T21:01:27+00:00\n"
+"POT-Creation-Date: 2025-01-02T19:15:00+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.11.0\n"
 "X-Domain: vacarme-plugin\n"
@@ -29,25 +29,40 @@ msgstr ""
 msgid "Antoine Chedin"
 msgstr ""
 
-#: vacarme.php:43
-msgid "Quests"
-msgstr ""
+#: src/renderers/admin-worldmap.php:22
+msgid "Hyperlinks"
+msgstr "Liens"
 
-#: vacarme.php:44
-msgid "Quest"
-msgstr ""
+#: src/renderers/admin-worldmap.php:24
+#: src/renderers/admin-worldmap.php:27
+msgid "Add New Hyperlink"
+msgstr "Ajouter un lien"
 
-#: vacarme.php:90
-#: vacarme.php:91
+#: src/renderers/admin-worldmap.php:162
+msgid "Untitled"
+msgstr "Sans titre"
+
+#: src/renderers/admin-worldmap.php:249
+msgid "Min zoom"
+msgstr "Zoom min"
+
+#: src/renderers/admin-worldmap.php:255
+msgid "max"
+msgstr "max"
+
+#: src/renderers/admin-worldmap.php:284
+msgid "Are you sure?"
+msgstr "Êtes vous sûr ?"
+
+#: vacarme.php:96
+#: vacarme.php:97
 msgid "World map"
-msgstr ""
+msgstr "Carte du monde"
 
-#: vacarme.php:100
-#: vacarme.php:101
-#: vacarme.php:115
+#: vacarme.php:124
 msgid "Locations"
-msgstr ""
+msgstr "Lieux"
 
-#: vacarme.php:116
+#: vacarme.php:125
 msgid "Location"
-msgstr ""
+msgstr "Lieu"

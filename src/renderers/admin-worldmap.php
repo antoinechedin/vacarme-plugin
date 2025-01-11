@@ -246,7 +246,7 @@ $json_map_hyperlinks = array_map(function ($post) {
                                             </select>
                                         </label>
                                         <fieldset class="oneline-fieldset">
-                                            <legend><span class="title"><?php _e('Zoom min', 'vacarme-plugin') ?></span></legend>
+                                            <legend><span class="title"><?php _e('Min zoom', 'vacarme-plugin') ?></span></legend>
                                             <div class="oneline-container">
                                                 <label>
                                                     <input type="number" id="edit-${this.id}-post_min_zoom" name="post_min_zoom" size="2" step="0.5" onchange="update('${this.id}')">
