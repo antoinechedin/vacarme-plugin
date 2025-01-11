@@ -245,21 +245,16 @@ $json_map_hyperlinks = array_map(function ($post) {
                                             ?>
                                             </select>
                                         </label>
-                                        <fieldset class="oneline-fieldset">
-                                            <legend><span class="title"><?php _e('Min zoom', 'vacarme-plugin') ?></span></legend>
-                                            <div class="oneline-container">
-                                                <label>
-                                                    <input type="number" id="edit-${this.id}-post_min_zoom" name="post_min_zoom" size="2" step="0.5" onchange="update('${this.id}')">
-                                                </label>
-                                                <button type="button" class="button-link" onclick="zoomTo('${this.id}', 0)"><span class="dashicons dashicons-search"></span></button>
-                                                &emsp;&emsp;<?php _e('max', 'vacarme-plugin') ?>
-                                                <label>
-                                                    <input type="number" id="edit-${this.id}-post_max_zoom" name="post_max_zoom" size="2" step="0.5" onchange="update('${this.id}')">  
-                                                </label>
-                                                <button type="button" class="button-link" onclick="zoomTo('${this.id}', 1)"><span class="dashicons dashicons-search"></span></button>
-                                            </div>
-                                        </fieldset>
-                                       
+                                        <label>
+                                            <span class="title"><?php _e('Min zoom', 'vacarme-plugin') ?></span>
+                                            <input type="number" id="edit-${this.id}-post_min_zoom" name="post_min_zoom" size="2" step="0.5" onchange="update('${this.id}')">
+                                            <button type="button" class="button-link" onclick="zoomTo('${this.id}', 0)"><span class="dashicons dashicons-search"></span></button>
+                                        </label>
+                                        <label>
+                                            <span class="title"><?php _e('Max zoom', 'vacarme-plugin') ?></span>
+                                            <input type="number" id="edit-${this.id}-post_max_zoom" name="post_max_zoom" size="2" step="0.5" onchange="update('${this.id}')">  
+                                            <button type="button" class="button-link" onclick="zoomTo('${this.id}', 1)"><span class="dashicons dashicons-search"></span></button>
+                                        </label>
                                     </div>
                                 </fieldset>
                                 <div id="edit-${this.id}-actions" class="submit inline-edit-save">
