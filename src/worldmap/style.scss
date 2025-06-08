@@ -1,0 +1,15 @@
+/**
+ * The following styles get applied both on the front of your site
+ * and in the editor.
+ *
+ * Replace them with your own styles or remove the file completely.
+ */
+
+.wp-block-vacarme-worldmap {
+	width: 100vw;
+	height: calc(100vh - var(--wp-admin--admin-bar--height, 0px));
+}
+
+.leaflet-interactive:hover {
+	fill-opacity: 0.5;
+}

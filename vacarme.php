@@ -43,6 +43,7 @@ function VacarmeCustomBlocksInit()
 {
 	register_block_type(__DIR__ . '/build/auto-page-list');
 	register_block_type(__DIR__ . '/build/geojson');
+	register_block_type(__DIR__ . '/build/worldmap');
 }
 add_action('init', 'VacarmeCustomBlocksInit');
 
