@@ -3,15 +3,26 @@
  */
 
 // window.onload = (event) => {
+
 var map = L.map('worldmap', {
     crs: L.CRS.Simple,
     zoomDelta: 0.25,
     zoomSnap: 0,
 }).setView([-128, 128], 2.5);
-L.tileLayer('http://89.168.46.40/map/{z}/{y}_{x}.jpg', {
+
+map.createPane('labels');
+map.getPane('labels').style.zIndex = 450;
+map.getPane('labels').style.pointerEvents = 'none';
+
+let mapLayer = L.tileLayer('http://89.168.46.40/map/0_map_layer/{z}/{y}_{x}.jpg', {
     maxZoom: 7,
-    minZoom: 1,
+    minZoom: 0,
     attribution: '&copy; Vacarme'
+}).addTo(map);
+
+let tagLayer = L.tileLayer('http://89.168.46.40/map/1_tag_layer/{z}/{y}_{x}.png', {
+    errorTileUrl: 'http://89.168.46.40/map/empty.png',
+    pane: 'labels',
 }).addTo(map);
 
 function hyperlinksStyle(feature) {
@@ -20,6 +31,8 @@ function hyperlinksStyle(feature) {
         stroke: false,
         fillOpacity: 0,
         fill: zoom >= feature.properties.minZoom && zoom < feature.properties.maxZoom,
+        fillColor: '#000000',
+        className: 'map-hyperlink'
     }
 }
 
@@ -37,11 +50,9 @@ let hyperlinksLayer = L.geoJSON(
         style: hyperlinksStyle,
         onEachFeature: onEachHyperlinks
     }
-);
+).addTo(map);
 
 map.on('zoomend', (e) => {
     hyperlinksLayer.resetStyle();
 });
-
-map.addLayer(hyperlinksLayer);
 // }
