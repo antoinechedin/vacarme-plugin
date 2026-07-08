@@ -50,10 +50,9 @@ tagLayer.createTile = function (coords, done) {
 
     const key = `${z}/${y}_${x}`;
     const url = `http://89.168.46.40/map/1_tag_layer/${key}.png`;
-    const empty_url = 'http://89.168.46.40/map/empty.png';
 
     const img = document.createElement('img');
-    img.src = tagTileSet.has(key) ? url : empty_url;
+    img.src = tagTileSet.has(key) ? url : "";
     img.alt = '';
     img.onload = () => done(null, img);
     img.onerror = (e) => done(e, img);
